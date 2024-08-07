@@ -1,0 +1,10 @@
+packages:
+  dbs_size:
+    - name: "db_size"
+      query: "SELECT table_schema AS 'database', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'size_mb' FROM information_schema.TABLES GROUP BY table_schema ORDER BY 2 desc"
+      labels:
+        - "database"
+      values:
+        - column: "size_mb"
+          type: "gauge"
+          help: "Database Size in MB"

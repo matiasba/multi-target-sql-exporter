@@ -1,0 +1,4 @@
+auths:
+  generic-monitoring:
+    user: "<REPLACE_USER>"
+    password: "<REPLACE_PASSWORD>"
