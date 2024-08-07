@@ -2,16 +2,16 @@
 
 There is a bunch of SQL Prometheus exporters out there like but not one follows the multi-target pattern correctly and depend on files with static targets and fixed scrape intervals. Those exporters didn't  cover my use case so I slap together this bad boy. Hopefully someone who actually knows how to code will rewrite it in go and make it nice like the [Blackbox exporter](https://github.com/prometheus/blackbox_exporter). 
 
-**Important: This only works with MySQL for now**
+**Important: This only works with MySQL for now**\
 I will try to make it PostgreSQL compatible at some point (maybe)
 
 ## How it works
 
-The exporter publish `/scrape` endpoint where it waits for a request with the following parameters:
-**host** hostname or ip of target database
-**port** *optional parameter* will default to 3306  
-**database** database on which the query package will be executed  
-**package**  name of the package of queries that will be executed on the target from `queries.yaml`
+The exporter publish `/scrape` endpoint where it waits for a request with the following parameters:\
+**host** hostname or ip of target database\
+**port** *optional parameter* will default to 3306\
+**database** database on which the query package will be executed\
+**package**  name of the package of queries that will be executed on the target from `queries.yaml`\
 **auth** name of the auth credential to use from `auth.yaml`
 
 Example of simple *Prometheus* static config:
@@ -31,8 +31,8 @@ Example of simple *Prometheus* static config:
 	      - target_label: __address__
 	        replacement: localhost:9866
 
-Example of `auth.yaml` config:
-*Question:* Why are the auth credentials store in a file inside the exporter?
+Example of `auth.yaml` config:\
+*Question:* Why are the auth credentials store in a file inside the exporter?\
 *Answer:* Because the Prometheus config doesn't provide a way to provide the credentials in a secure way, if passed as a parameter It will always be shown in the Prometheus targets list as a discovered label. You can have this file provisioned during deployment based on your current credentials and redeploy the app when you need to roll credentials.
 
 	auths:  
@@ -43,9 +43,8 @@ Example of `auth.yaml` config:
 	    user: "dummy"  
 	    password: "pass12345"  
 
-Example of `queries.yaml` config:
-*Details:* 
-You can have multiple queries defined on the same package, they will be executed in series and all the metrics generated will return together
+Example of `queries.yaml` config:\
+You can have multiple queries defined on the same package, they will be executed in series and all the metrics generated will return together\
 You can have multiple metrics defined in a single query, each value column will be a metric and each label must be a column in the result set.
 
 	packages:
@@ -67,7 +66,7 @@ Will return:
 	db_size_size_mb{database="performance_schema"} 0.0
 	db_size_size_mb{database="information_schema"} 0.0
 
-More complex usage:
+### More complex usage
 Example data:
 
 	"ID","amount","seller","country"
