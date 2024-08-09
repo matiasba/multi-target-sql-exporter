@@ -1,6 +1,6 @@
 # Multi-target SQL Exporter
 
-There is a bunch of SQL Prometheus exporters out there like but not one follows the multi-target pattern correctly and depend on files with static targets and fixed scrape intervals. Those exporters didn't  cover my use case so I slap together this bad boy. Hopefully someone who actually knows how to code will rewrite it in go and make it nice like the [Blackbox exporter](https://github.com/prometheus/blackbox_exporter). 
+There is a bunch of SQL Prometheus exporters out there but not one follows the multi-target pattern correctly and depend on files with static targets and fixed scrape intervals. Those exporters didn't cover my use case, so I slap together this bad boy. Hopefully someone who actually knows how to code will rewrite it in GO and make it nice like the [Blackbox exporter](https://github.com/prometheus/blackbox_exporter). 
 
 **Important: This only works with MySQL for now**\
 I will try to make it PostgreSQL compatible at some point (maybe)
