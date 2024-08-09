@@ -2,14 +2,14 @@
 
 There is a bunch of SQL Prometheus exporters out there like but not one follows the multi-target pattern correctly and depend on files with static targets and fixed scrape intervals. Those exporters didn't  cover my use case so I slap together this bad boy. Hopefully someone who actually knows how to code will rewrite it in go and make it nice like the [Blackbox exporter](https://github.com/prometheus/blackbox_exporter). 
 
-**Important: This only works with MySQL for now**\
-I will try to make it PostgreSQL compatible at some point (maybe)
+**Important: Tested only on `mysql` and `postgres`**
 
 ## How it works
 
 The exporter publish `/scrape` endpoint where it waits for a request with the following parameters:\
 **host** hostname or ip of target database\
-**port** *optional parameter* will default to 3306\
+**engine** database engine, supports `mysql`, `postgres`, `oracle` and `mssql`\
+**port** database port\
 **database** database on which the query package will be executed\
 **package**  name of the package of queries that will be executed on the target from `queries.yaml`\
 **auth** name of the auth credential to use from `auth.yaml`
@@ -105,3 +105,20 @@ Will return:
 	sales_amount{seller="Carlos",country="BR"} 500.0
 	sales_amount{seller="Pedro",country="ARG"} 1200.0
 	sales_amount{seller="Pedro",country="BR"} 600.0
+
+## How to run
+
+### Docker (recommended)
+    docker build . -t multi-target-scrapper:latest
+    docker run -d -p 9866:9866 multi-target-scrapper:latest
+
+### Manually with uwsgi
+uwsgi allows to scale up the amount of supported concurrency by setting a higher `processes` count on the `app.ini`
+
+    pip install -r requirements.txt
+    uwsgi --ini app.ini
+
+### Manually with flask internal webserver (not recommended, only for dev purposes)
+
+    pip install -r requirements.txt
+    python3 wsgi.py

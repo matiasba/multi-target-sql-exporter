@@ -1,18 +1,25 @@
-import pymysql
+from sqlalchemy import create_engine, text
+import pandas as pd
 
 
 def execute_query(db_config, query):
-    connection = pymysql.connect(
-        host=db_config['host'],
-        port=db_config['port'],
-        user=db_config['user'],
-        password=db_config['password'],
-        database=db_config['database']
-    )
+    engine = str(db_config['engine']).lower()
+    match engine:
+        case "mysql":
+            driver = "mysql+pymysql"
+        case "postgres":
+            driver = "postgresql+psycopg2"
+        case "oracle":
+            driver = "oracle+oracledb"
+        case "mssql":
+            driver = "mssql+pymssql"
+        case _:
+            raise Exception(f"unknown or unsupported engine: {engine}")
+    engine = create_engine(
+        f'{driver}://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}')
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(query)
-            result = cursor.fetchall()
-            return cursor.description, result
+        with engine.connect() as conn, conn.begin():
+            df = pd.read_sql(text(query), engine)
     finally:
-        connection.close()
+        engine.dispose()
+    return df
