@@ -1,5 +1,5 @@
-from flask import request, jsonify, Blueprint
-from prometheus_client import generate_latest, CollectorRegistry, Gauge, Counter
+from flask import request, jsonify, Blueprint, Response
+from prometheus_client import generate_latest, CollectorRegistry, CONTENT_TYPE_LATEST, Gauge, Counter
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from app import auth_config, queries_config, execute_query
 
@@ -43,57 +43,63 @@ def scrape_endpoint():
             if len(results.columns) != len(labels) + len(values):
                 return jsonify(
                     {"error": "Number of columns in query result does not match labels and values"}), 500
+            if results.size !=0:
+                # Map column names to their indices
+                value_indexes = []
+                metrics = {}
+                for value in values:
+                    if value['column'] not in results.columns:
+                        return jsonify({"error": f"Value column '{value['column']}' not found in query result"}), 500
 
-            # Map column names to their indices
-            value_indexes = []
-            metrics = {}
-            for value in values:
-                if value['column'] not in results.columns:
-                    return jsonify({"error": f"Value column '{value['column']}' not found in query result"}), 500
+                    value_indexes.append(results.columns.get_loc(value['column']))
 
-                value_indexes.append(results.columns.get_loc(value['column']))
+                    metrics_properties = [d for d in values if d['column'] == value['column']]
 
-                metrics_properties = [d for d in values if d['column'] == value['column']]
+                    if len(metrics_properties) > 1:
+                        return jsonify({"error": f"There is multiple columns with the name: {value}"}), 400
 
-                if len(metrics_properties) > 1:
-                    return jsonify({"error": f"There is multiple columns with the name: {value}"}), 400
+                    metric_type = metrics_properties[0]['type']
+                    metric_help = metrics_properties[0]['help']
+                    if metric_type == 'gauge':
+                        metric = Gauge(f'{query["name"]}_{value['column']}', metric_help, registry=registry,
+                                       labelnames=labels)
+                    elif metric_type == 'counter':
+                        metric = Counter(f'{query["name"]}_{value['column']}', metric_help, registry=registry,
+                                         labelnames=labels)
+                    else:
+                        return jsonify({"error": f"Unsupported metric type: {metric_type}"}), 400
 
-                metric_type = metrics_properties[0]['type']
-                metric_help = metrics_properties[0]['help']
-                if metric_type == 'gauge':
-                    metric = Gauge(f'{query["name"]}_{value['column']}', metric_help, registry=registry,
-                                   labelnames=labels)
-                elif metric_type == 'counter':
-                    metric = Counter(f'{query["name"]}_{value['column']}', metric_help, registry=registry,
-                                     labelnames=labels)
-                else:
-                    return jsonify({"error": f"Unsupported metric type: {metric_type}"}), 400
-                metrics[value['column']] = metric
+                    metrics[value['column']] = metric
 
-            for row in results.values:
-                label_values = {}
-                for index, column in enumerate(row):
-                    if index not in value_indexes:
-                        # Extract labels
-                        label_values[results.columns[index]] = column
+                for row in results.values:
+                    label_values = {}
+                    for index, column in enumerate(row):
+                        if index not in value_indexes:
+                            # Extract labels
+                            label_values[results.columns[index]] = column
 
-                for index, column in enumerate(row):
-                    if index in value_indexes:
-                        # Extract values
-                        value = column
-                        value_name = results.columns[index]
-                        if type(metrics[value_name]) is Gauge:
-                            if labels:
-                                metrics[value_name].labels(**label_values).set(value)
-                            else:
-                                metrics[value_name].set(value)
-                        elif type(metrics[value_name]) is Counter:
-                            if labels:
-                                metrics[value_name].labels(**label_values).inc(value)
-                            else:
-                                metrics[value_name].inc(value)
-
-        return generate_latest(registry)
+                    for index, column in enumerate(row):
+                        if index in value_indexes:
+                            # Extract values
+                            value = column
+                            value_name = results.columns[index]
+                            if type(metrics[value_name]) is Gauge:
+                                if labels:
+                                    metrics[value_name].labels(**label_values).set(value)
+                                else:
+                                    metrics[value_name].set(value)
+                            elif type(metrics[value_name]) is Counter:
+                                if labels:
+                                    metrics[value_name].labels(**label_values).inc(value)
+                                else:
+                                    metrics[value_name].inc(value)
+        data=generate_latest(registry)
+        scrape_response = Response(data)
+        scrape_response.headers = [
+            ('Content-type', CONTENT_TYPE_LATEST),
+            ('Content-Length', str(len(data)))
+        ]
+        return scrape_response
 
     except (OperationalError, ProgrammingError) as e:
         return jsonify({"error": "Database error", "details": str(e)}), 500
